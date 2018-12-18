@@ -159,7 +159,7 @@ class UserNotification(RenderNotificationsNode):
                 is_authenticated = user.is_authenticated
 
             if is_authenticated:
-                notifications = user.notifications.active().prefetch()
+                notifications = user.notifications.active(request.session['currentCourseID']).prefetch()
                 return self.generate_html(notifications)
         return ''
 

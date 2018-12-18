@@ -51,7 +51,7 @@ def notifications(request):
 
     :return: Rendered notification list page.
     """
-    notification_list = request.user.notifications.active().prefetch()
+    notification_list = request.user.notifications.active(course_id=request.session['currentCourseID']).prefetch()
     return render(request, 'notifications/all.html',
                   {'notifications': notification_list})
 
@@ -70,16 +70,16 @@ def mark(request):
     notification_id = request.POST.get('id', None)
     action = request.POST.get('action', None)
     success = True
-
+    course_id = request.session['currentCourseID']
     if notification_id:
         try:
             notification = Notification.objects.get(pk=notification_id,
                                                     recipient=request.user)
             if action == 'read':
-                notification.mark_as_read()
+                notification.mark_as_read(course_id=course_id)
                 msg = _("Marked as read")
             elif action == 'unread':
-                notification.mark_as_unread()
+                notification.mark_as_unread(course_id=course_id)
                 msg = _("Marked as unread")
             else:
                 success = False
@@ -109,12 +109,12 @@ def mark_all(request):
     """
     action = request.POST.get('action', None)
     success = True
-
+    course_id = request.session['currentCourseID']
     if action == 'read':
-        request.user.notifications.read_all()
+        request.user.notifications.read_all(course_id=course_id)
         msg = _("Marked all notifications as read")
     elif action == 'unread':
-        request.user.notifications.unread_all()
+        request.user.notifications.unread_all(course_id=course_id)
         msg = _("Marked all notifications as unread")
     else:
         msg = _("Invalid mark action")
@@ -143,11 +143,11 @@ def delete(request):
     """
     notification_id = request.POST.get('id', None)
     success = True
-
+    course_id = request.session['currentCourseID']
     if notification_id:
         try:
             notification = Notification.objects.get(pk=notification_id,
-                                                    recipient=request.user)
+                                                    recipient=request.user, extra__contains='"course": "{}"'.format(course_id))
             soft_delete = getattr(settings, 'NOTIFY_SOFT_DELETE', True)
             if soft_delete:
                 notification.deleted = True
@@ -232,11 +232,11 @@ def notification_update(request):
     flag = request.GET.get('flag', None)
     target = request.GET.get('target', 'box')
     last_notification = int(flag) if flag.isdigit() else None
-
+    course_id = request.session['currentCourseID']
     if last_notification:
 
         new_notifications = request.user.notifications.filter(
-            id__gt=last_notification).active().prefetch()
+            id__gt=last_notification).active(course_id=course_id).prefetch()
 
         msg = _("Notifications successfully retrieved.") \
             if new_notifications else _("No new notifications.")
@@ -249,7 +249,7 @@ def notification_update(request):
 
         ctx = {
             "retrieved": len(new_notifications),
-            "unread_count": request.user.notifications.unread().count(),
+            "unread_count": request.user.notifications.unread(course_id).count(),
             "notifications": notification_list,
             "success": True,
             "msg": msg,
@@ -281,7 +281,7 @@ def read_and_redirect(request, notification_id):
     """
     notification_page = reverse('notifications:all')
     next_page = request.GET.get('next', notification_page)
-
+    course_id = request.session['currentCourseID']
     if is_safe_url(next_page):
         target = next_page
     else:
@@ -289,7 +289,7 @@ def read_and_redirect(request, notification_id):
     try:
         user_nf = request.user.notifications.get(pk=notification_id)
         if not user_nf.read:
-            user_nf.mark_as_read()
+            user_nf.mark_as_read(course_id)
     except Notification.DoesNotExist:
         pass
 

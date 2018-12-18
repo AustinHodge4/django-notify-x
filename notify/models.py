@@ -43,32 +43,38 @@ class NotificationQueryset(QuerySet):
             clone._prefetch_relations = True
         return clone
 
-    def active(self):
+    def active(self, course_id=None):
         """
         QuerySet filter() for retrieving both read and unread notifications
         which are not soft-deleted.
 
         :return: Non soft-deleted notifications.
         """
+        if course_id:
+            return self.filter(deleted=False, extra__contains='"course": "{}"'.format(course_id))
         return self.filter(deleted=False)
 
-    def read(self):
+    def read(self, course_id=None):
         """
         QuerySet filter() for retrieving read notifications.
 
         :return: Read and active Notifications filter().
         """
+        if course_id:
+            return self.filter(deleted=False, read=True, extra__contains='"course": "{}"'.format(course_id))
         return self.filter(deleted=False, read=True)
 
-    def unread(self):
+    def unread(self, course_id=None):
         """
         QuerySet filter() for retrieving unread notifications.
 
         :return: Unread and active Notifications filter().
         """
+        if course_id:
+            return self.filter(deleted=False, read=False, extra__contains='"course": "{}"'.format(course_id))
         return self.filter(deleted=False, read=False)
 
-    def unread_all(self, user=None):
+    def unread_all(self, user=None, course_id=None):
         """
         Marks all notifications as unread for a user (if supplied)
 
@@ -79,9 +85,11 @@ class NotificationQueryset(QuerySet):
         qs = self.read()
         if user:
             qs = qs.filter(recipient=user)
+        if course_id:
+            qs = qs.filter(extra__contains='"course": "{}"'.format(course_id))
         qs.update(read=False)
 
-    def read_all(self, user=None):
+    def read_all(self, user=None, course_id=None):
         """
         Marks all notifications as read for a user (if supplied)
 
@@ -92,9 +100,11 @@ class NotificationQueryset(QuerySet):
         qs = self.unread()
         if user:
             qs = qs.filter(recipient=user)
+        if course_id:
+            qs = qs.filter(extra__contains='"course": "{}"'.format(course_id))
         qs.update(read=True)
 
-    def delete_all(self, user=None):
+    def delete_all(self, user=None, course_id=None):
         """
         Method to soft-delete all notifications of a User (if supplied)
 
@@ -105,6 +115,8 @@ class NotificationQueryset(QuerySet):
         qs = self.active()
         if user:
             qs = qs.filter(recipient=user)
+        if course_id:
+            qs = qs.filter(extra__contains='"course": "{}"'.format(course_id))
 
         soft_delete = getattr(settings, 'NOTIFY_SOFT_DELETE', True)
 
@@ -113,7 +125,7 @@ class NotificationQueryset(QuerySet):
         else:
             qs.delete()
 
-    def active_all(self, user=None):
+    def active_all(self, user=None, course_id=None):
         """
         Method to soft-delete all notifications of a User (if supplied)
 
@@ -124,14 +136,18 @@ class NotificationQueryset(QuerySet):
         qs = self.deleted()
         if user:
             qs = qs.filter(recipient=user)
+        if course_id:
+            qs = qs.filter(extra__contains='"course": "{}"'.format(course_id))
         qs.update(deleted=False)
 
-    def deleted(self):
+    def deleted(self, course_id=None):
         """
         QuerySet ``filter()`` for retrieving soft-deleted notifications.
 
         :return: Soft deleted notification filter()
         """
+        if course_id:
+            return self.filter(deleted=True, extra__contains='"course": "{}"'.format(course_id))
         return self.filter(deleted=True)
 
 
@@ -215,7 +231,7 @@ class Notification(models.Model):
         verbose_name=_('Anonymous URL for actor'))
 
     # basic details.
-    verb = models.CharField(max_length=100,
+    verb = models.CharField(max_length=200,
                             verbose_name=_('Verb of the action'))
 
     description = models.CharField(
@@ -268,7 +284,7 @@ class Notification(models.Model):
         blank=True, null=True, max_length=200,
         verbose_name=_('Anonymous URL for action object'))
 
-    extra = JSONField(null=True, blank=True,
+    extra = models.TextField(null=True, blank=True, default='{}',
                       verbose_name=_('JSONField to store addtional data'))
 
     # Advanced details.
