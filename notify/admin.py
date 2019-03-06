@@ -4,7 +4,7 @@ from .models import Notification
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ('recipient', 'actor', 'verb',
+    list_display = ('recipient', 'actor', 'verb','created',
                     'obj', 'target', 'read', 'deleted')
     list_filter = ('read', 'deleted', 'nf_type', 'created')
     search_fields = ('verb', 'description', 'actor_text', 'target_text')
